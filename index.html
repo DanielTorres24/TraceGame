@@ -205,15 +205,44 @@ body.turn-p2 .stick:not(.taken):active { transform: scaleY(.96); }
 body.turn-p1 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { background: rgba(232,240,64,0.18); }
 body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { background: rgba(240,64,96,0.18); }
 
-/* ── BOTTOM CONTROLS ── */
+/* ── CONTROLS — one row per player ── */
 .controls {
   width: 100%;
   padding: 0 clamp(16px,5vw,32px);
   display: flex;
   gap: clamp(8px,2vw,14px);
   flex-shrink: 0;
-  margin-bottom: clamp(8px,2vw,16px);
 }
+
+/* P1 controls — normal, at the bottom */
+.controls-p1 {
+  margin-bottom: clamp(6px,1.5vw,12px);
+}
+
+/* P2 controls — rotated 180°, at the top */
+.controls-p2 {
+  transform: rotate(180deg);
+  margin-top: clamp(6px,1.5vw,12px);
+}
+
+/* hide inactive player's controls */
+.controls-p1.inactive { opacity: 0.18; pointer-events: none; }
+.controls-p2.inactive { opacity: 0.18; pointer-events: none; }
+
+/* ── BANNER TURN LABEL ── */
+.banner-turn-label {
+  font-size: clamp(11px,2.8vw,16px);
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0;
+  transition: opacity 0.3s;
+  flex: 1;
+  text-align: center;
+}
+.p1-banner .banner-turn-label { color: var(--c1); }
+.p2-banner .banner-turn-label { color: var(--c2); }
+.active-banner .banner-turn-label { opacity: 1; }
 
 .btn {
   flex: 1;
@@ -342,6 +371,77 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
 }
 .btn-big-p { background: var(--c1); color: var(--bg); }
 .btn-big-p:active { transform: scale(.97); }
+
+.btn-big-rules {
+  background: none;
+  border: 1.5px solid var(--muted);
+  color: var(--text);
+  opacity: 0.7;
+}
+.btn-big-rules:active { opacity: 1; border-color: var(--text); transform: scale(.97); }
+
+.start-btns {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(10px,2.5vw,16px);
+  margin-top: clamp(16px,5vw,32px);
+}
+
+/* rules screen */
+.screen-rules {
+  background: var(--bg);
+  padding: clamp(16px,5vw,32px) clamp(20px,6vw,40px);
+  justify-content: flex-start;
+  overflow-y: auto;
+  padding-top: clamp(32px,8vw,56px);
+}
+
+.rules-title {
+  font-size: clamp(2rem,8vw,3.2rem);
+  font-weight: 300;
+  letter-spacing: 0.2em;
+  margin-bottom: clamp(16px,4vw,28px);
+  flex-shrink: 0;
+}
+
+.rules-body {
+  display: flex;
+  flex-direction: column;
+  gap: clamp(12px,3vw,20px);
+  width: 100%;
+  max-width: 420px;
+}
+
+.rule-item {
+  display: flex;
+  align-items: flex-start;
+  gap: clamp(12px,3vw,18px);
+  background: var(--dim);
+  border: 1px solid var(--mid);
+  border-radius: clamp(8px,2vw,12px);
+  padding: clamp(10px,2.5vw,16px) clamp(14px,3.5vw,20px);
+}
+
+.rule-icon {
+  font-size: clamp(1.2rem,4vw,1.6rem);
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.rule-text {
+  font-size: clamp(11px,2.8vw,15px);
+  color: var(--text);
+  opacity: 0.75;
+  line-height: 1.6;
+  letter-spacing: 0.02em;
+}
+
+.rule-text strong {
+  color: var(--text);
+  opacity: 1;
+  font-weight: 500;
+}
 
 /* round start overlay */
 .screen-round {
@@ -519,7 +619,46 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
   </div>
   <div class="app-name"><span style="color:#ff3b5c">T</span><span style="color:#ffcc00">R</span><span style="color:#00e5ff">A</span><span style="color:#ff6b00">Ç</span><span style="color:#a8ff3e">O</span><span style="color:#ff3b5c">S</span></div>
   <div class="app-tagline">2 jogadores · evita o último</div>
-  <button class="btn-big btn-big-p" style="margin-top:clamp(16px,5vw,32px)" onclick="initGame()">Jogar</button>
+  <div class="start-btns">
+    <button class="btn-big btn-big-p" onclick="initGame()">▶ Jogar</button>
+    <button class="btn-big btn-big-rules" onclick="show('screenRules')">? Regras</button>
+  </div>
+</div>
+
+<!-- RULES SCREEN -->
+<div class="overlay screen-rules" id="screenRules">
+  <div class="rules-title"><span style="color:#ff3b5c">R</span><span style="color:#ffcc00">E</span><span style="color:#00e5ff">G</span><span style="color:#ff6b00">R</span><span style="color:#a8ff3e">A</span><span style="color:#ff3b5c">S</span></div>
+  <div class="rules-body">
+    <div class="rule-item">
+      <div class="rule-icon">🪵</div>
+      <div class="rule-text">A pirâmide tem <strong>10 traços</strong> distribuídos em 4 níveis (1, 2, 3, 4)</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">👆</div>
+      <div class="rule-text">Na tua vez seleciona <strong>um ou mais traços consecutivos</strong> na mesma linha</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">↺</div>
+      <div class="rule-text">Podes <strong>desfazer</strong> a seleção antes de confirmar</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">✔</div>
+      <div class="rule-text">Clica <strong>"Passar →"</strong> para confirmar e passar a vez</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">⏱</div>
+      <div class="rule-text">Tens <strong>15 segundos</strong> — se o tempo esgotar é selecionado um traço aleatório</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">💀</div>
+      <div class="rule-text">Quem apanhar o <strong>último traço perde</strong> a ronda</div>
+    </div>
+    <div class="rule-item">
+      <div class="rule-icon">🏆</div>
+      <div class="rule-text">Vence o campeonato quem chegar a <strong>3 vitórias</strong> primeiro</div>
+    </div>
+  </div>
+  <button class="btn-big btn-big-rules" onclick="hide('screenRules')" style="margin-top:clamp(12px,3vw,20px)">← Voltar</button>
 </div>
 
 <!-- ROUND START SCREEN -->
@@ -549,9 +688,9 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
 
 <!-- LAST STICK OVERLAY — shown for 5s before next round -->
 <div class="overlay screen-last" id="screenLast">
-  <div class="last-loser-label">perdeu</div>
+  <div class="last-loser-label">venceu a ronda</div>
   <div class="last-loser-name" id="lastLoserName">J1</div>
-  <div class="last-sub">apanhou o último traço</div>
+  <div class="last-sub">adversário apanhou o último traço</div>
   <div class="last-countdown-wrap">
     <div class="last-countdown" id="lastCountdown">5</div>
     <svg class="last-cd-ring" viewBox="0 0 44 44">
@@ -573,10 +712,17 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
     <div class="bstar" id="s2-1"></div>
     <div class="bstar" id="s2-2"></div>
   </div>
+  <div class="banner-turn-label" id="turnLabel2">a tua vez</div>
   <div class="timer-arc" id="arc2">
     <svg viewBox="0 0 36 36"><circle class="arc-bg" cx="18" cy="18" r="15"/><circle class="arc-fill" cx="18" cy="18" r="15" id="arcFill2" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg>
     <div class="timer-num-small" id="tnum2">—</div>
   </div>
+</div>
+
+<!-- CONTROLS P2 (top, rotated for J2) -->
+<div class="controls controls-p2" id="controlsP2">
+  <button class="btn btn-pass" id="btnPassP2" onclick="passTurn()">Passar →</button>
+  <button class="btn btn-undo" id="btnUndoP2" onclick="undoSelection()">↺</button>
 </div>
 
 <!-- TURN LINE TOP -->
@@ -613,12 +759,19 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
   <div class="turn-line-fill" id="tlineBottomFill"></div>
 </div>
 
+<!-- CONTROLS P1 (bottom, normal orientation for J1) -->
+<div class="controls controls-p1" id="controlsP1">
+  <button class="btn btn-undo" id="btnUndoP1" onclick="undoSelection()">↺</button>
+  <button class="btn btn-pass" id="btnPassP1" onclick="passTurn()">Passar →</button>
+</div>
+
 <!-- P1 BANNER (bottom) -->
 <div class="player-banner p1-banner" id="banner1">
   <div class="timer-arc" id="arc1">
     <svg viewBox="0 0 36 36"><circle class="arc-bg" cx="18" cy="18" r="15"/><circle class="arc-fill" cx="18" cy="18" r="15" id="arcFill1" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg>
     <div class="timer-num-small" id="tnum1">—</div>
   </div>
+  <div class="banner-turn-label" id="turnLabel1">a tua vez</div>
   <div class="banner-stars" id="stars1">
     <div class="bstar" id="s1-0"></div>
     <div class="bstar" id="s1-1"></div>
@@ -627,16 +780,15 @@ body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { backgr
   <div class="banner-dot"></div>
 </div>
 
-<!-- CONTROLS -->
-<div class="controls">
-  <button class="btn btn-undo" id="btnUndo" onclick="undoSelection()">↺</button>
-  <button class="btn btn-start" id="btnStart" style="display:none" onclick="goToRoundScreen()">▶ Ronda</button>
-  <button class="btn btn-pass" id="btnPass" onclick="passTurn()">Passar →</button>
+<!-- CONTROLS P2 (top, rotated for J2) -->
+<div class="controls controls-p2" id="controlsP2">
+  <button class="btn btn-pass" id="btnPassP2" onclick="passTurn()">Passar →</button>
+  <button class="btn btn-undo" id="btnUndoP2" onclick="undoSelection()">↺</button>
 </div>
 
 <script>
 // ─── CONSTANTS ────────────────────────────────────────────────────────────────
-const WINS = 3, TIME = 10;
+const WINS = 3, TIME = 15;
 const CIRC = 94.25; // 2π×15
 
 // ─── STATE ───────────────────────────────────────────────────────────────────
@@ -860,9 +1012,16 @@ function updateBanners(){
 }
 
 function updatePassBtn(){
-  const btn = document.getElementById('btnPass');
   const ok = !!sel && sel.cols.length>0;
-  btn.className = `btn btn-pass${ok ? ` ready-p${cp}` : ''}`;
+  // P1 buttons
+  const p1 = document.getElementById('btnPassP1');
+  p1.className = `btn btn-pass${ok && cp===1 ? ` ready-p1` : ''}`;
+  // P2 buttons
+  const p2 = document.getElementById('btnPassP2');
+  p2.className = `btn btn-pass${ok && cp===2 ? ` ready-p2` : ''}`;
+  // Show only active player's controls
+  document.getElementById('controlsP1').classList.toggle('inactive', cp!==1);
+  document.getElementById('controlsP2').classList.toggle('inactive', cp!==2);
 }
 
 // ─── ROUND WIN ───────────────────────────────────────────────────────────────
@@ -881,14 +1040,14 @@ function roundWin(winner, loser){
 
 function showLastOverlay(loser, winner){
   const nameEl = document.getElementById('lastLoserName');
-  nameEl.textContent = `J${loser}`;
-  nameEl.className = `last-loser-name lp${loser}`;
+  nameEl.textContent = `J${winner}`;
+  nameEl.className = `last-loser-name lp${winner}`;
 
   const arc = document.getElementById('lastCdArc');
   const cdNum = document.getElementById('lastCountdown');
   const LAST_CD = 5;
   const CIRC_LAST = 113.1;
-  arc.style.stroke = loser===1 ? 'var(--c1)' : 'var(--c2)';
+  arc.style.stroke = winner===1 ? 'var(--c1)' : 'var(--c2)';
 
   let t = LAST_CD;
   cdNum.textContent = t;
