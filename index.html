@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Traços</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+
+:root {
+  --bg:    #0e0e0f;
+  --c1:    #e8f040;   /* player 1: sharp yellow-green */
+  --c2:    #f04060;   /* player 2: vivid coral-red    */
+  --dim:   #1c1c1e;
+  --mid:   #2a2a2e;
+  --muted: #48484e;
+  --text:  #f0f0f2;
+  --stick-w: clamp(12px, 3vw, 18px);
+  --stick-h: clamp(64px, 14vw, 100px);
+  --gap:     clamp(10px, 2.5vw, 20px);
+}
+
+html, body {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg);
+  font-family: 'DM Mono', monospace;
+  color: var(--text);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-between;
+  height: 100dvh;
+  padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
+  user-select: none;
+}
+
+/* ── PLAYER BANNERS top & bottom ── */
+.player-banner {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 clamp(16px,5vw,32px);
+  height: clamp(52px, 12vw, 72px);
+  transition: background 0.3s;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.player-banner.p1-banner { background: rgba(232,240,64,0.05); }
+.player-banner.p2-banner { background: rgba(240,64,96,0.05); transform: rotate(180deg); }
+
+.player-banner.active-banner.p1-banner { background: rgba(232,240,64,0.10); }
+.player-banner.active-banner.p2-banner { background: rgba(240,64,96,0.10); }
+
+.banner-dot {
+  width: clamp(8px,2vw,12px);
+  height: clamp(8px,2vw,12px);
+  border-radius: 50%;
+  flex-shrink: 0;
+  transition: all 0.3s;
+}
+.p1-banner .banner-dot { background: var(--c1); box-shadow: 0 0 0 rgba(232,240,64,0); }
+.p2-banner .banner-dot { background: var(--c2); box-shadow: 0 0 0 rgba(240,64,96,0); }
+.active-banner .banner-dot { box-shadow: 0 0 10px currentColor; animation: dotPulse 1.4s ease-in-out infinite; }
+.p1-banner.active-banner .banner-dot { animation-name: dotPulse1; }
+.p2-banner.active-banner .banner-dot { animation-name: dotPulse2; }
+
+@keyframes dotPulse1 { 0%,100%{box-shadow:0 0 4px var(--c1)} 50%{box-shadow:0 0 14px var(--c1)} }
+@keyframes dotPulse2 { 0%,100%{box-shadow:0 0 4px var(--c2)} 50%{box-shadow:0 0 14px var(--c2)} }
+
+.banner-stars {
+  display: flex;
+  gap: clamp(4px,1.2vw,8px);
+  align-items: center;
+}
+
+.bstar {
+  width: clamp(10px,2.5vw,16px);
+  height: clamp(10px,2.5vw,16px);
+  border-radius: 50%;
+  border: 1.5px solid var(--muted);
+  transition: all 0.3s;
+  flex-shrink: 0;
+}
+.p1-banner .bstar.lit { background: var(--c1); border-color: var(--c1); box-shadow: 0 0 6px var(--c1); }
+.p2-banner .bstar.lit { background: var(--c2); border-color: var(--c2); box-shadow: 0 0 6px var(--c2); }
+.bstar.lit { animation: starPop .35s ease; }
+@keyframes starPop { 0%{transform:scale(0)} 60%{transform:scale(1.3)} 100%{transform:scale(1)} }
+
+/* timer arc */
+.timer-arc {
+  position: relative;
+  width: clamp(32px,8vw,48px);
+  height: clamp(32px,8vw,48px);
+  flex-shrink: 0;
+}
+.timer-arc svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.arc-bg   { fill:none; stroke:var(--mid); stroke-width:3; }
+.arc-fill { fill:none; stroke-width:3.5; stroke-linecap:round; transition:stroke-dashoffset .1s linear, stroke .5s; }
+.p1-banner .arc-fill { stroke: var(--c1); }
+.p2-banner .arc-fill { stroke: var(--c2); }
+.timer-num-small {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(9px,2.2vw,13px);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+/* ── CENTRE GAME AREA ── */
+.game-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px,3vw,20px);
+  width: 100%;
+  padding: clamp(4px,2vw,16px) clamp(16px,5vw,40px);
+}
+
+/* ── PYRAMID ROWS ── */
+.pyramid { display: flex; flex-direction: column; align-items: center; gap: clamp(12px,3vw,22px); }
+.row { display: flex; align-items: center; justify-content: center; gap: var(--gap); }
+
+/* ── STICK ── */
+.stick {
+  width: var(--stick-w);
+  height: var(--stick-h);
+  border-radius: calc(var(--stick-w) / 2);
+  background: var(--mid);
+  cursor: pointer;
+  position: relative;
+  transition: transform .12s, background .15s;
+  overflow: hidden;
+  flex-shrink: 0;
+  /* subtle inner light */
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.08), inset 0 -1px 0 rgba(0,0,0,0.3);
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* light sheen */
+.stick::before {
+  content: '';
+  position: absolute;
+  top: 4px; left: 2px;
+  width: calc(40% );
+  height: calc(100% - 8px);
+  border-radius: 50%;
+  background: rgba(255,255,255,0.07);
+  pointer-events: none;
+}
+
+/* strikethrough reveal */
+.stick::after {
+  content: '';
+  position: absolute;
+  top: 0; left: calc(50% - 2px);
+  width: 4px; height: 0;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.7);
+  transition: none;
+}
+
+body.turn-p1 .stick:not(.taken):active { transform: scaleY(.96); }
+body.turn-p2 .stick:not(.taken):active { transform: scaleY(.96); }
+
+/* pending */
+.stick.pending-p1 { background: rgba(232,240,64,0.45); box-shadow: 0 0 0 1.5px var(--c1), inset 0 1px 0 rgba(255,255,255,0.15); }
+.stick.pending-p2 { background: rgba(240,64,96,0.45);  box-shadow: 0 0 0 1.5px var(--c2), inset 0 1px 0 rgba(255,255,255,0.15); }
+
+/* taken */
+.stick.taken { cursor: default; }
+.stick.taken-p1 { background: var(--c1); box-shadow: 0 0 12px rgba(232,240,64,0.25); }
+.stick.taken-p2 { background: var(--c2); box-shadow: 0 0 12px rgba(240,64,96,0.25); }
+
+/* strike animation */
+.stick.taken-p1::after,
+.stick.taken-p2::after {
+  animation: strikeDown .22s ease forwards;
+}
+@keyframes strikeDown {
+  from { height: 0; top: 0; }
+  to   { height: 100%; top: 0; }
+}
+
+/* invalid shake */
+@keyframes shakeX { 0%,100%{transform:translateX(0)} 30%{transform:translateX(-5px)} 70%{transform:translateX(5px)} }
+.stick.shake { animation: shakeX .25s ease; }
+
+/* hover (desktop) */
+body.turn-p1 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { background: rgba(232,240,64,0.18); }
+body.turn-p2 .stick:not(.taken):not(.pending-p1):not(.pending-p2):hover { background: rgba(240,64,96,0.18); }
+
+/* ── BOTTOM CONTROLS ── */
+.controls {
+  width: 100%;
+  padding: 0 clamp(16px,5vw,32px);
+  display: flex;
+  gap: clamp(8px,2vw,14px);
+  flex-shrink: 0;
+  margin-bottom: clamp(8px,2vw,16px);
+}
+
+.btn {
+  flex: 1;
+  height: clamp(44px,11vw,58px);
+  border: none;
+  border-radius: clamp(6px,2vw,10px);
+  font-family: 'DM Mono', monospace;
+  font-size: clamp(10px,2.5vw,14px);
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: all .15s;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  touch-action: manipulation;
+}
+
+.btn-undo {
+  background: var(--dim);
+  color: var(--muted);
+  border: 1.5px solid var(--mid);
+  flex: 0 0 clamp(44px,11vw,58px);
+  padding: 0;
+  font-size: clamp(16px,4vw,22px);
+}
+.btn-undo:active { background: var(--mid); color: var(--text); }
+
+.btn-start {
+  background: var(--dim);
+  color: var(--text);
+  border: 1.5px solid var(--mid);
+  font-size: clamp(11px,2.8vw,15px);
+}
+.btn-start:active { background: var(--mid); }
+
+.btn-pass {
+  background: var(--dim);
+  color: var(--muted);
+  border: 1.5px solid var(--mid);
+  pointer-events: none;
+  opacity: 0.4;
+}
+
+.btn-pass.ready-p1 {
+  background: rgba(232,240,64,0.12);
+  border-color: var(--c1);
+  color: var(--c1);
+  pointer-events: all;
+  opacity: 1;
+}
+.btn-pass.ready-p2 {
+  background: rgba(240,64,96,0.12);
+  border-color: var(--c2);
+  color: var(--c2);
+  pointer-events: all;
+  opacity: 1;
+}
+.btn-pass.ready-p1:active { background: rgba(232,240,64,0.22); }
+.btn-pass.ready-p2:active { background: rgba(240,64,96,0.22); }
+
+/* ── OVERLAY screens ── */
+.overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(12px,4vw,24px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.overlay.show { opacity: 1; pointer-events: all; }
+
+/* start screen */
+.screen-start { background: var(--bg); }
+
+.logo-mark {
+  display: flex;
+  align-items: flex-end;
+  gap: clamp(5px,1.5vw,9px);
+  margin-bottom: clamp(8px,3vw,16px);
+}
+.logo-stick {
+  border-radius: 99px;
+  background: var(--muted);
+  width: clamp(8px,2vw,13px);
+}
+.logo-stick:nth-child(1) { height: clamp(28px,7vw,48px); background: var(--c1); }
+.logo-stick:nth-child(2) { height: clamp(42px,10vw,68px); background: var(--muted); }
+.logo-stick:nth-child(3) { height: clamp(52px,13vw,88px); background: var(--c2); }
+.logo-stick:nth-child(4) { height: clamp(36px,9vw,60px); background: var(--muted); }
+
+.app-name {
+  font-size: clamp(2.4rem,10vw,4rem);
+  font-weight: 300;
+  letter-spacing: 0.18em;
+  color: var(--text);
+}
+.app-tagline {
+  font-size: clamp(10px,2.4vw,13px);
+  letter-spacing: 0.2em;
+  color: var(--text);
+  opacity: 0.5;
+  text-transform: uppercase;
+}
+
+.btn-big {
+  width: clamp(180px,60vw,280px);
+  height: clamp(50px,13vw,66px);
+  border-radius: 99px;
+  border: none;
+  font-family: 'DM Mono', monospace;
+  font-size: clamp(12px,3vw,16px);
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all .2s;
+  touch-action: manipulation;
+}
+.btn-big-p { background: var(--c1); color: var(--bg); }
+.btn-big-p:active { transform: scale(.97); }
+
+/* round start overlay */
+.screen-round {
+  background: rgba(14,14,15,0.97);
+}
+
+.round-num {
+  font-size: clamp(4rem,18vw,8rem);
+  font-weight: 300;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  opacity: 0.7;
+}
+.round-msg {
+  font-size: clamp(13px,3.2vw,18px);
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.9;
+}
+
+/* winner screen */
+.screen-winner { background: rgba(14,14,15,0.98); }
+
+.winner-color-p1 { color: var(--c1); }
+.winner-color-p2 { color: var(--c2); }
+
+.win-big {
+  font-size: clamp(3.5rem,16vw,7rem);
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.win-label {
+  font-size: clamp(11px,2.6vw,15px);
+  letter-spacing: 0.25em;
+  color: var(--text);
+  opacity: 0.7;
+  text-transform: uppercase;
+}
+.win-score {
+  display: flex;
+  gap: clamp(12px,4vw,24px);
+  align-items: center;
+}
+.win-score-block { text-align: center; }
+.win-score-num {
+  font-size: clamp(2rem,8vw,3.5rem);
+  font-weight: 300;
+  line-height: 1;
+}
+.win-score-label {
+  font-size: clamp(10px,2.4vw,14px);
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.55;
+}
+.win-divider { font-size: clamp(1rem,3vw,1.5rem); color: var(--text); opacity: 0.3; }
+
+/* ── TOAST ── */
+.toast {
+  position: fixed;
+  bottom: clamp(80px,20vw,110px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--dim);
+  border: 1px solid var(--mid);
+  border-radius: 99px;
+  padding: clamp(8px,2vw,12px) clamp(16px,4vw,24px);
+  font-size: clamp(10px,2.5vw,13px);
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+  z-index: 40;
+  opacity: 0;
+  transition: all .3s cubic-bezier(.34,1.56,.64,1);
+  pointer-events: none;
+  text-transform: uppercase;
+}
+.toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+/* ── TURN INDICATOR LINE ── */
+.turn-line {
+  width: 100%;
+  height: 2px;
+  background: var(--mid);
+  flex-shrink: 0;
+  position: relative;
+  overflow: hidden;
+}
+.turn-line-fill {
+  position: absolute;
+  top: 0; left: 0;
+  height: 100%;
+  width: 0;
+  transition: width .1s linear;
+}
+.turn-line.tl-p1 .turn-line-fill { background: var(--c1); }
+.turn-line.tl-p2 .turn-line-fill { background: var(--c2); }
+/* ── LAST STICK OVERLAY ── */
+.screen-last {
+  background: rgba(14,14,15,0.96);
+  gap: clamp(6px,2vw,14px);
+  backdrop-filter: blur(4px);
+}
+
+.last-loser-label {
+  font-size: clamp(11px,2.6vw,15px);
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.6;
+}
+
+.last-loser-name {
+  font-size: clamp(4.5rem,20vw,9rem);
+  font-weight: 300;
+  letter-spacing: 0.06em;
+  line-height: 1;
+  transition: color 0.3s;
+}
+.last-loser-name.lp1 { color: var(--c1); }
+.last-loser-name.lp2 { color: var(--c2); }
+
+.last-sub {
+  font-size: clamp(11px,2.8vw,15px);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text);
+  opacity: 0.5;
+}
+
+.last-countdown-wrap {
+  position: relative;
+  width: clamp(44px,12vw,64px);
+  height: clamp(44px,12vw,64px);
+  margin-top: clamp(8px,3vw,16px);
+}
+
+.last-countdown {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: clamp(14px,4vw,20px);
+  font-weight: 500;
+  color: var(--text);
+  opacity: 0.75;
+}
+
+.last-cd-ring {
+  width: 100%;
+  height: 100%;
+}
+
+#lastCdArc {
+  transition: stroke-dashoffset .1s linear;
+  stroke: var(--muted);
+}
+</style>
+</head>
+<body class="turn-p1">
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- START SCREEN -->
+<div class="overlay screen-start show" id="screenStart">
+  <div class="logo-mark">
+    <div class="logo-stick"></div>
+    <div class="logo-stick"></div>
+    <div class="logo-stick"></div>
+    <div class="logo-stick"></div>
+  </div>
+  <div class="app-name"><span style="color:#ff3b5c">T</span><span style="color:#ffcc00">R</span><span style="color:#00e5ff">A</span><span style="color:#ff6b00">Ç</span><span style="color:#a8ff3e">O</span><span style="color:#ff3b5c">S</span></div>
+  <div class="app-tagline">2 jogadores · evita o último</div>
+  <button class="btn-big btn-big-p" style="margin-top:clamp(16px,5vw,32px)" onclick="initGame()">Jogar</button>
+</div>
+
+<!-- ROUND START SCREEN -->
+<div class="overlay screen-round" id="screenRound">
+  <div class="round-num" id="roundNumDisplay">1</div>
+  <div class="round-msg" id="roundMsg">Ronda 1 · J1 começa</div>
+  <button class="btn-big btn-big-p" id="btnRoundStart" onclick="startRound()" style="margin-top:clamp(8px,3vw,16px)">▶ Iniciar</button>
+</div>
+
+<!-- WINNER SCREEN -->
+<div class="overlay screen-winner" id="screenWinner">
+  <div class="win-label">vencedor</div>
+  <div class="win-big" id="winBig">J1</div>
+  <div class="win-score">
+    <div class="win-score-block">
+      <div class="win-score-num winner-color-p1" id="wscore1">0</div>
+      <div class="win-score-label">J1</div>
+    </div>
+    <div class="win-divider">—</div>
+    <div class="win-score-block">
+      <div class="win-score-num winner-color-p2" id="wscore2">0</div>
+      <div class="win-score-label">J2</div>
+    </div>
+  </div>
+  <button class="btn-big btn-big-p" onclick="fullReset()" style="margin-top:clamp(8px,3vw,16px)">Novo jogo</button>
+</div>
+
+<!-- LAST STICK OVERLAY — shown for 5s before next round -->
+<div class="overlay screen-last" id="screenLast">
+  <div class="last-loser-label">perdeu</div>
+  <div class="last-loser-name" id="lastLoserName">J1</div>
+  <div class="last-sub">apanhou o último traço</div>
+  <div class="last-countdown-wrap">
+    <div class="last-countdown" id="lastCountdown">5</div>
+    <svg class="last-cd-ring" viewBox="0 0 44 44">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="3"/>
+      <circle cx="22" cy="22" r="18" fill="none" stroke-width="3" stroke-linecap="round"
+        id="lastCdArc"
+        stroke-dasharray="113.1"
+        stroke-dashoffset="0"
+        transform="rotate(-90 22 22)"/>
+    </svg>
+  </div>
+</div>
+
+<!-- P2 BANNER (top, flipped) -->
+<div class="player-banner p2-banner" id="banner2">
+  <div class="banner-dot"></div>
+  <div class="banner-stars" id="stars2">
+    <div class="bstar" id="s2-0"></div>
+    <div class="bstar" id="s2-1"></div>
+    <div class="bstar" id="s2-2"></div>
+  </div>
+  <div class="timer-arc" id="arc2">
+    <svg viewBox="0 0 36 36"><circle class="arc-bg" cx="18" cy="18" r="15"/><circle class="arc-fill" cx="18" cy="18" r="15" id="arcFill2" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg>
+    <div class="timer-num-small" id="tnum2">—</div>
+  </div>
+</div>
+
+<!-- TURN LINE TOP -->
+<div class="turn-line" id="turnLineTop">
+  <div class="turn-line-fill" id="tlineTopFill"></div>
+</div>
+
+<!-- GAME AREA -->
+<div class="game-area">
+  <div class="pyramid" id="pyramid">
+    <div class="row">
+      <div class="stick" data-row="0" data-col="0"></div>
+    </div>
+    <div class="row">
+      <div class="stick" data-row="1" data-col="0"></div>
+      <div class="stick" data-row="1" data-col="1"></div>
+    </div>
+    <div class="row">
+      <div class="stick" data-row="2" data-col="0"></div>
+      <div class="stick" data-row="2" data-col="1"></div>
+      <div class="stick" data-row="2" data-col="2"></div>
+    </div>
+    <div class="row">
+      <div class="stick" data-row="3" data-col="0"></div>
+      <div class="stick" data-row="3" data-col="1"></div>
+      <div class="stick" data-row="3" data-col="2"></div>
+      <div class="stick" data-row="3" data-col="3"></div>
+    </div>
+  </div>
+</div>
+
+<!-- TURN LINE BOTTOM -->
+<div class="turn-line" id="turnLineBottom">
+  <div class="turn-line-fill" id="tlineBottomFill"></div>
+</div>
+
+<!-- P1 BANNER (bottom) -->
+<div class="player-banner p1-banner" id="banner1">
+  <div class="timer-arc" id="arc1">
+    <svg viewBox="0 0 36 36"><circle class="arc-bg" cx="18" cy="18" r="15"/><circle class="arc-fill" cx="18" cy="18" r="15" id="arcFill1" stroke-dasharray="94.25" stroke-dashoffset="94.25"/></svg>
+    <div class="timer-num-small" id="tnum1">—</div>
+  </div>
+  <div class="banner-stars" id="stars1">
+    <div class="bstar" id="s1-0"></div>
+    <div class="bstar" id="s1-1"></div>
+    <div class="bstar" id="s1-2"></div>
+  </div>
+  <div class="banner-dot"></div>
+</div>
+
+<!-- CONTROLS -->
+<div class="controls">
+  <button class="btn btn-undo" id="btnUndo" onclick="undoSelection()">↺</button>
+  <button class="btn btn-start" id="btnStart" style="display:none" onclick="goToRoundScreen()">▶ Ronda</button>
+  <button class="btn btn-pass" id="btnPass" onclick="passTurn()">Passar →</button>
+</div>
+
+<script>
+// ─── CONSTANTS ────────────────────────────────────────────────────────────────
+const WINS = 3, TIME = 10;
+const CIRC = 94.25; // 2π×15
+
+// ─── STATE ───────────────────────────────────────────────────────────────────
+let cp = 1;              // current player
+let scores = [0, 0];
+let taken = buildBoard();
+let sel = null;          // {row, cols:[]}
+let gameOver = false;
+let roundOver = false;
+let roundStarted = false;
+let roundN = 1;
+let timerLeft = TIME;
+let timerInt = null;
+
+function buildBoard(){ return [[null],[null,null],[null,null,null],[null,null,null,null]]; }
+function rowSize(r){ return r+1; }
+function remaining(){ let n=0; for(let r=0;r<4;r++) for(let c=0;c<rowSize(r);c++) if(!taken[r][c]) n++; return n; }
+
+// ─── INIT ────────────────────────────────────────────────────────────────────
+function initGame(){
+  hide('screenStart');
+  bindSticks();
+  updateBanners();
+  goToRoundScreen();
+}
+
+function bindSticks(){
+  document.querySelectorAll('.stick').forEach(el => {
+    el.addEventListener('click', () => clickStick(el));
+    el.addEventListener('touchend', e => { e.preventDefault(); clickStick(el); });
+  });
+}
+
+// ─── ROUND SCREEN ────────────────────────────────────────────────────────────
+function goToRoundScreen(){
+  roundStarted = false;
+  stopTimer();
+  const msg = `Ronda ${roundN} · J${cp} começa`;
+  document.getElementById('roundNumDisplay').textContent = roundN;
+  document.getElementById('roundMsg').textContent = msg;
+  // update start button colour
+  const btn = document.getElementById('btnRoundStart');
+  btn.style.background = cp===1 ? 'var(--c1)' : 'var(--c2)';
+  show('screenRound');
+}
+
+function startRound(){
+  hide('screenRound');
+  roundStarted = true;
+  updateBanners();
+  startTimer();
+}
+
+// ─── TIMER ───────────────────────────────────────────────────────────────────
+function startTimer(){
+  stopTimer();
+  timerLeft = TIME;
+  renderTimer();
+  timerInt = setInterval(() => {
+    timerLeft--;
+    renderTimer();
+    if(timerLeft <= 0){ clearInterval(timerInt); timeOut(); }
+  }, 1000);
+}
+
+function stopTimer(){ clearInterval(timerInt); }
+
+function renderTimer(){
+  const pct = timerLeft / TIME;
+  const offset = CIRC * (1 - pct);
+  // only active player shows timer
+  const af1 = document.getElementById('arcFill1');
+  const af2 = document.getElementById('arcFill2');
+  const tn1 = document.getElementById('tnum1');
+  const tn2 = document.getElementById('tnum2');
+  const tl  = document.getElementById(cp===1 ? 'tlineBottomFill' : 'tlineTopFill');
+  const tl2 = document.getElementById(cp===1 ? 'tlineTopFill' : 'tlineBottomFill');
+
+  if(cp===1){
+    af1.style.strokeDashoffset = offset;
+    af2.style.strokeDashoffset = CIRC;
+    tn1.textContent = timerLeft;
+    tn2.textContent = '—';
+    tl.style.width  = (pct*100)+'%';
+    tl2.style.width = '0%';
+    document.getElementById('turnLineBottom').className = 'turn-line tl-p1';
+    document.getElementById('turnLineTop').className = 'turn-line';
+  } else {
+    af2.style.strokeDashoffset = offset;
+    af1.style.strokeDashoffset = CIRC;
+    tn2.textContent = timerLeft;
+    tn1.textContent = '—';
+    tl.style.width  = (pct*100)+'%';
+    tl2.style.width = '0%';
+    document.getElementById('turnLineTop').className = 'turn-line tl-p2';
+    document.getElementById('turnLineBottom').className = 'turn-line';
+  }
+}
+
+function timeOut(){
+  // pick random available stick
+  const avail = [];
+  for(let r=0;r<4;r++) for(let c=0;c<rowSize(r);c++) if(!taken[r][c]) avail.push({r,c});
+  if(!avail.length){ switchPlayer(); return; }
+  const pick = avail[Math.floor(Math.random()*avail.length)];
+  clearPending();
+  sel = null;
+  taken[pick.r][pick.c] = `p${cp}`;
+  const el = getEl(pick.r, pick.c);
+  applyTaken(el, `p${cp}`);
+  showToast(`⏱ J${cp} — traço automático`);
+  updatePassBtn();
+  if(remaining()===0){ roundWin(cp===1?2:1, cp); return; }
+  setTimeout(()=>switchPlayer(), 600);
+}
+
+// ─── STICK INTERACTION ───────────────────────────────────────────────────────
+function clickStick(el){
+  if(!roundStarted || roundOver || gameOver) return;
+  const row = +el.dataset.row, col = +el.dataset.col;
+  const pc = `p${cp}`;
+  if(taken[row][col]) return;
+
+  // deselect from end
+  if(el.classList.contains(`pending-${pc}`)){
+    if(sel && sel.row===row){
+      const idx = sel.cols.indexOf(col);
+      if(idx===0 || idx===sel.cols.length-1){
+        el.classList.remove(`pending-p1`,`pending-p2`);
+        sel.cols.splice(idx,1);
+        if(!sel.cols.length) sel=null;
+        updatePassBtn(); return;
+      }
+    }
+    return;
+  }
+
+  if(sel && sel.row!==row){ shake(el); return; }
+
+  if(!sel){
+    sel = {row, cols:[col]};
+    el.classList.add(`pending-${pc}`);
+    updatePassBtn(); return;
+  }
+
+  const min=Math.min(...sel.cols), max=Math.max(...sel.cols);
+  if(col===min-1 && !taken[row][col]){
+    sel.cols.push(col); el.classList.add(`pending-${pc}`); updatePassBtn();
+  } else if(col===max+1 && !taken[row][col]){
+    sel.cols.push(col); el.classList.add(`pending-${pc}`); updatePassBtn();
+  } else { shake(el); }
+}
+
+function shake(el){
+  el.classList.remove('shake');
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(()=>el.classList.remove('shake'),260);
+}
+
+function undoSelection(){ clearPending(); sel=null; updatePassBtn(); }
+
+function clearPending(){
+  document.querySelectorAll('.stick').forEach(s=>s.classList.remove('pending-p1','pending-p2'));
+}
+
+// ─── PASS TURN ───────────────────────────────────────────────────────────────
+function passTurn(){
+  if(!sel || !sel.cols.length || roundOver || !roundStarted) return;
+  stopTimer();
+  const pc = `p${cp}`;
+  sel.cols.forEach(c=>{
+    taken[sel.row][c]=pc;
+    const el=getEl(sel.row,c);
+    el.classList.remove('pending-p1','pending-p2');
+    applyTaken(el,pc);
+  });
+  sel=null; updatePassBtn();
+
+  const rem = remaining();
+  if(rem === 0){
+    // current player took everything including the last — they lose
+    roundWin(cp===1?2:1);
+    return;
+  }
+  if(rem === 1){
+    // exactly 1 stick left — find it, it belongs to whoever is next
+    // next player is forced to take it → they lose → current player wins
+    const nextPlayer = cp===1?2:1;
+    // auto-mark the last stick as taken by nextPlayer (they're forced)
+    let lastR=-1, lastC=-1;
+    outer: for(let r=0;r<4;r++) for(let c=0;c<rowSize(r);c++) if(!taken[r][c]){ lastR=r; lastC=c; break outer; }
+    taken[lastR][lastC]=`p${nextPlayer}`;
+    const lastEl = getEl(lastR, lastC);
+    applyTaken(lastEl, `p${nextPlayer}`);
+    // loser = nextPlayer, winner = cp
+    roundWin(cp, nextPlayer);
+    return;
+  }
+  switchPlayer();
+}
+
+function applyTaken(el,pc){
+  el.classList.add(`taken-${pc}`,'taken');
+}
+
+// ─── SWITCH ──────────────────────────────────────────────────────────────────
+function switchPlayer(){
+  cp = cp===1?2:1;
+  updateBanners();
+  startTimer();
+}
+
+function updateBanners(){
+  const b1=document.getElementById('banner1');
+  const b2=document.getElementById('banner2');
+  b1.classList.toggle('active-banner', cp===1);
+  b2.classList.toggle('active-banner', cp===2);
+  document.body.className = `turn-p${cp}`;
+  updatePassBtn();
+}
+
+function updatePassBtn(){
+  const btn = document.getElementById('btnPass');
+  const ok = !!sel && sel.cols.length>0;
+  btn.className = `btn btn-pass${ok ? ` ready-p${cp}` : ''}`;
+}
+
+// ─── ROUND WIN ───────────────────────────────────────────────────────────────
+let lastCdInt = null;
+
+function roundWin(winner, loser){
+  roundOver = true;
+  stopTimer();
+  clearTimerUI();
+  // loser defaults to the other player
+  if(loser === undefined) loser = winner===1?2:1;
+
+  // Show last-stick overlay for 5s, then proceed
+  showLastOverlay(loser, winner);
+}
+
+function showLastOverlay(loser, winner){
+  const nameEl = document.getElementById('lastLoserName');
+  nameEl.textContent = `J${loser}`;
+  nameEl.className = `last-loser-name lp${loser}`;
+
+  const arc = document.getElementById('lastCdArc');
+  const cdNum = document.getElementById('lastCountdown');
+  const LAST_CD = 5;
+  const CIRC_LAST = 113.1;
+  arc.style.stroke = loser===1 ? 'var(--c1)' : 'var(--c2)';
+
+  let t = LAST_CD;
+  cdNum.textContent = t;
+  arc.style.strokeDashoffset = 0;
+
+  show('screenLast');
+
+  clearInterval(lastCdInt);
+  lastCdInt = setInterval(()=>{
+    t--;
+    cdNum.textContent = t;
+    arc.style.strokeDashoffset = CIRC_LAST * (1 - t/LAST_CD);
+    if(t <= 0){
+      clearInterval(lastCdInt);
+      hide('screenLast');
+      afterRoundWin(winner);
+    }
+  }, 1000);
+}
+
+function afterRoundWin(winner){
+  scores[winner-1]++;
+  updateStars();
+
+  if(scores[winner-1] >= WINS){
+    setTimeout(()=>showWinner(winner), 300);
+  } else {
+    roundN++;
+    setTimeout(()=>newRound(winner), 300);
+  }
+}
+
+function clearTimerUI(){
+  ['arcFill1','arcFill2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.style.strokeDashoffset=CIRC;
+  });
+  document.getElementById('tnum1').textContent='—';
+  document.getElementById('tnum2').textContent='—';
+  document.getElementById('tlineBottomFill').style.width='0%';
+  document.getElementById('tlineTopFill').style.width='0%';
+}
+
+function updateStars(){
+  for(let p=1;p<=2;p++) for(let i=0;i<3;i++){
+    document.getElementById(`s${p}-${i}`).classList.toggle('lit', i<scores[p-1]);
+  }
+}
+
+// ─── NEW ROUND ───────────────────────────────────────────────────────────────
+function newRound(startPlayer){
+  roundOver=false; roundStarted=false;
+  taken=buildBoard(); sel=null; cp=startPlayer;
+  document.querySelectorAll('.stick').forEach(el=>{
+    el.className='stick';
+    el.dataset.bound=''; // keep data attrs
+  });
+  updatePassBtn(); updateBanners(); updateStars();
+  goToRoundScreen();
+}
+
+// ─── WINNER SCREEN ───────────────────────────────────────────────────────────
+function showWinner(winner){
+  gameOver=true;
+  const wb=document.getElementById('winBig');
+  wb.textContent=`J${winner}`;
+  wb.className=`win-big winner-color-p${winner}`;
+  document.getElementById('wscore1').textContent=scores[0];
+  document.getElementById('wscore2').textContent=scores[1];
+  show('screenWinner');
+}
+
+// ─── FULL RESET ──────────────────────────────────────────────────────────────
+function fullReset(){
+  scores=[0,0]; gameOver=false; roundOver=false;
+  roundStarted=false; taken=buildBoard();
+  sel=null; cp=1; roundN=1;
+  clearInterval(lastCdInt);
+  hide('screenWinner'); hide('screenLast');
+  document.querySelectorAll('.stick').forEach(el=>{ el.className='stick'; });
+  updatePassBtn(); updateBanners(); updateStars(); clearTimerUI();
+  goToRoundScreen();
+}
+
+// ─── HELPERS ─────────────────────────────────────────────────────────────────
+function getEl(r,c){ return document.querySelector(`.stick[data-row="${r}"][data-col="${c}"]`); }
+function show(id){ document.getElementById(id).classList.add('show'); }
+function hide(id){ document.getElementById(id).classList.remove('show'); }
+
+let toastTimer;
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(()=>t.classList.remove('show'),2200);
+}
+</script>
+</body>
+</html>
